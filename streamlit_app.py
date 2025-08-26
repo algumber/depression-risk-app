@@ -33,8 +33,16 @@ st.write(
 
 # ---- Section 0: Demographics ----
 st.subheader("Demographics")
-dob = st.date_input("Please enter your date of birth:")
-lmp_date = st.date_input("What was the date of your last menstrual period?")
+dob = st.date_input(
+    "Please enter your date of birth:",
+    min_value=dt.date(1910, 1, 1),
+    max_value=dt.date.today()
+)
+lmp_date = st.date_input(
+    "What was the date of your last menstrual period?",
+    min_value=dt.date(1910, 1, 1),
+    max_value=dt.date.today()
+)
 
 # ---- Section 1: Symptoms ----
 st.subheader("Symptoms (past two weeks)")
