@@ -6,9 +6,12 @@ import datetime as dt
 import plotly.graph_objects as go
 
 # ================================
-# Load the trained model
+# Load the trained pipeline (preprocessing + logistic regression)
 # ================================
-best_model = joblib.load("calibrated_random_forest.pkl")
+model_info = joblib.load("log_reg_model.pkl")
+log_reg_model = model_info["model"]
+threshold = model_info["threshold"]
+top_features = model_info["features"]
 
 # ================================
 # Helper functions
@@ -75,7 +78,7 @@ health = st.selectbox("Would you say your health in general is:", list(health_ma
 # ================================
 if st.button("🔍 Predict Risk"):
     try:
-        # Binary yes/no -> numeric
+        # Map categorical responses back to numeric
         diffislp_val = 2 if diffislp == "Yes" else 1
         nisweat_val = 2 if nisweat == "Yes" else 1
         tense_val = 2 if tense == "Yes" else 1
@@ -83,7 +86,7 @@ if st.button("🔍 Predict Risk"):
         smoke_val = 2 if smoke_r == "Yes" else 1
         health_val = health_map[health]
 
-        # Map Likert scales back to numeric
+        # Reverse map Likert scale
         scale_reverse = {v: k for k, v in scale_labels.items()}
         control_val = scale_reverse[control]
         confid_val = scale_reverse[confid]
@@ -94,7 +97,7 @@ if st.button("🔍 Predict Risk"):
         p_stress = calculate_p_stress(control_val, confid_val, yourway_val, overcome_val)
         age_r_lmp = calculate_age_r_lmp(dob, lmp_date)
 
-        # Assemble input dataframe
+        # Assemble input dataframe (must match training feature names!)
         input_data = pd.DataFrame([{
             "TENSE": tense_val,
             "IRRITAB": irritab_val,
@@ -108,9 +111,12 @@ if st.button("🔍 Predict Risk"):
             "HEALTH": health_val
         }])
 
+        # Use only top features
+        input_data = input_data[top_features]
+
         # Prediction
-        prob = best_model.predict_proba(input_data)[:, 1][0]
-        pred = (prob >= 0.34).astype(int)  # tuned threshold
+        prob = log_reg_model.predict_proba(input_data)[:, 1][0]
+        pred = int(prob >= threshold)
 
         # ---- Results ----
         st.subheader("Results")
@@ -130,9 +136,8 @@ if st.button("🔍 Predict Risk"):
                 "axis": {"range": [0, 100]},
                 "bar": {"color": "darkblue"},
                 "steps": [
-                    {"range": [0, 30], "color": "lightgreen"},
-                    {"range": [30, 60], "color": "yellow"},
-                    {"range": [60, 100], "color": "red"},
+                    {"range": [0, threshold*100], "color": "lightgreen"},
+                    {"range": [threshold*100, 100], "color": "red"},
                 ],
             }
         ))
